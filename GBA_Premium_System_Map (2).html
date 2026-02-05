@@ -1,0 +1,1577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GBA Traffic Congestion - Premium System Map</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f5f7fa;
+            overflow-x: hidden;
+        }
+        
+        #app {
+            max-width: 1920px;
+            margin: 0 auto;
+            background: white;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #1a1f3a 0%, #2d3561 100%);
+            color: white;
+            padding: 40px 60px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .header-content {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            letter-spacing: -0.5px;
+        }
+        
+        .subtitle {
+            font-size: 18px;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+        
+        .stats-bar {
+            display: flex;
+            gap: 40px;
+            margin-top: 25px;
+            padding-top: 25px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        
+        .stat-content {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 1;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-top: 4px;
+        }
+        
+        #controls {
+            background: white;
+            padding: 30px 60px;
+            border-bottom: 2px solid #e8eef5;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        
+        .controls-content {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .view-controls {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 8px;
+            background: #f5f7fa;
+            padding: 6px;
+            border-radius: 12px;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: transparent;
+            color: #4a5568;
+        }
+        
+        .btn:hover {
+            background: white;
+            color: #1a1f3a;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .btn.active {
+            background: #1a1f3a;
+            color: white;
+            box-shadow: 0 4px 12px rgba(26,31,58,0.2);
+        }
+        
+        .action-controls {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .btn-action {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            border: none;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102,126,234,0.3);
+        }
+        
+        .btn-secondary {
+            background: #f5f7fa;
+            color: #4a5568;
+            border: 2px solid #e8eef5;
+        }
+        
+        .btn-secondary:hover {
+            background: white;
+            border-color: #1a1f3a;
+            color: #1a1f3a;
+        }
+        
+        #main {
+            display: flex;
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 40px 60px;
+            gap: 40px;
+        }
+        
+        #map-section {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .section-header {
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1a1f3a;
+            margin-bottom: 8px;
+        }
+        
+        .section-description {
+            font-size: 14px;
+            color: #718096;
+        }
+        
+        #map-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+            position: relative;
+            height: 1100px;
+            overflow: hidden;
+            border: 1px solid #e8eef5;
+        }
+        
+        #legend-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.98);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+            border: 1px solid rgba(0,0,0,0.05);
+            max-width: 320px;
+            z-index: 100;
+        }
+        
+        .legend-section {
+            margin-bottom: 20px;
+        }
+        
+        .legend-section:last-child {
+            margin-bottom: 0;
+        }
+        
+        .legend-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #1a1f3a;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            font-size: 13px;
+            color: #4a5568;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 6px;
+            margin-right: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            flex-shrink: 0;
+        }
+        
+        .legend-line {
+            width: 32px;
+            height: 3px;
+            margin-right: 12px;
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
+        
+        .layer-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 4px 16px rgba(102,126,234,0.3);
+            z-index: 100;
+        }
+        
+        .zoom-controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 100;
+        }
+        
+        .zoom-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            border: none;
+            background: white;
+            color: #1a1f3a;
+            font-size: 20px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .zoom-btn:hover {
+            background: #1a1f3a;
+            color: white;
+            transform: scale(1.05);
+        }
+        
+        #sidebar {
+            width: 400px;
+            flex-shrink: 0;
+        }
+        
+        .info-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+            border: 1px solid #e8eef5;
+        }
+        
+        .info-card-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1a1f3a;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .info-card-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 16px;
+        }
+        
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #f5f7fa;
+        }
+        
+        .metric-row:last-child {
+            border-bottom: none;
+        }
+        
+        .metric-label {
+            font-size: 13px;
+            color: #718096;
+            font-weight: 500;
+        }
+        
+        .metric-value {
+            font-size: 14px;
+            font-weight: 700;
+            color: #F96167;
+        }
+        
+        .loop-card {
+            background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%);
+            border-left: 4px solid #F96167;
+            padding: 16px;
+            margin: 12px 0;
+            border-radius: 8px;
+        }
+        
+        .loop-number {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            background: #F96167;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 28px;
+            font-weight: 700;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        
+        .loop-name {
+            font-weight: 700;
+            color: #990011;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .loop-flow {
+            font-size: 12px;
+            color: #4a5568;
+            line-height: 1.6;
+            margin-top: 8px;
+        }
+        
+        .flow-arrow {
+            color: #F96167;
+            font-weight: 700;
+            margin: 0 4px;
+        }
+        
+        .node {
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .node-rect {
+            transition: all 0.3s;
+        }
+        
+        .node:hover .node-rect {
+            filter: brightness(1.1);
+            stroke-width: 3px;
+        }
+        
+        .node-label {
+            font-family: 'Inter', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            text-anchor: middle;
+            pointer-events: none;
+            fill: white;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+        
+        .node-sublabel {
+            font-size: 9px;
+            font-weight: 500;
+            opacity: 0.95;
+        }
+        
+        .node-badge {
+            font-size: 10px;
+            font-weight: 700;
+        }
+        
+        .link {
+            fill: none;
+            stroke-linecap: round;
+            transition: all 0.3s;
+        }
+        
+        .link-label {
+            font-size: 10px;
+            font-weight: 600;
+            fill: #4a5568;
+            text-anchor: middle;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .link-label.visible {
+            opacity: 1;
+        }
+        
+        .feedback-loop {
+            stroke-dasharray: 10,5;
+            animation: dash 40s linear infinite;
+        }
+        
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -1000;
+            }
+        }
+        
+        .layer-group {
+            opacity: 1;
+            transition: opacity 0.4s;
+        }
+        
+        .layer-group.dimmed {
+            opacity: 0.15;
+        }
+        
+        .tooltip {
+            position: fixed;
+            background: rgba(26,31,58,0.98);
+            color: white;
+            padding: 16px 20px;
+            border-radius: 12px;
+            font-size: 13px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            max-width: 320px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+            z-index: 10000;
+            backdrop-filter: blur(10px);
+        }
+        
+        .tooltip.show {
+            opacity: 1;
+        }
+        
+        .tooltip-header {
+            font-weight: 700;
+            font-size: 15px;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            color: #CADCFC;
+        }
+        
+        .tooltip-body {
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+        
+        .tooltip-footer {
+            padding-top: 10px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            font-size: 11px;
+            opacity: 0.8;
+        }
+        
+        .impact-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            margin-top: 6px;
+        }
+        
+        .impact-critical {
+            background: #FFD700;
+            color: #1a1f3a;
+        }
+        
+        .impact-high {
+            background: #F96167;
+            color: white;
+        }
+        
+        .impact-medium {
+            background: #667eea;
+            color: white;
+        }
+        
+        .detail-panel {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+            border: 1px solid #e8eef5;
+            margin-top: 24px;
+            display: none;
+        }
+        
+        .detail-panel.active {
+            display: block;
+            animation: slideUp 0.4s ease-out;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 20px;
+        }
+        
+        .detail-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1a1f3a;
+        }
+        
+        .close-btn {
+            background: #f5f7fa;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            color: #718096;
+            transition: all 0.3s;
+        }
+        
+        .close-btn:hover {
+            background: #e8eef5;
+            color: #1a1f3a;
+        }
+        
+        .connection-list {
+            margin-top: 16px;
+        }
+        
+        .connection-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            background: #f5f7fa;
+            border-radius: 8px;
+            margin: 8px 0;
+            font-size: 13px;
+        }
+        
+        .connection-arrow {
+            margin: 0 10px;
+            color: #718096;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <header>
+            <div class="header-content">
+                <h1>Greater Beirut Traffic Congestion: Comprehensive System Analysis</h1>
+                <p class="subtitle">Interactive mapping of causal relationships, feedback mechanisms, and systemic lock-in</p>
+                
+                <div class="stats-bar">
+                    <div class="stat">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-content">
+                            <div class="stat-value">25</div>
+                            <div class="stat-label">System Elements</div>
+                        </div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-icon">🔗</div>
+                        <div class="stat-content">
+                            <div class="stat-value">52</div>
+                            <div class="stat-label">Causal Links</div>
+                        </div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-icon">🔄</div>
+                        <div class="stat-content">
+                            <div class="stat-value">6</div>
+                            <div class="stat-label">Reinforcing Loops</div>
+                        </div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-icon">💰</div>
+                        <div class="stat-content">
+                            <div class="stat-value">$2B</div>
+                            <div class="stat-label">Annual Loss</div>
+                        </div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-icon">⏱️</div>
+                        <div class="stat-content">
+                            <div class="stat-value">90min</div>
+                            <div class="stat-label">Avg Commute</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <div id="controls">
+            <div class="controls-content">
+                <div class="view-controls">
+                    <div class="btn-group">
+                        <button class="btn active" onclick="showLayer('all')">All Layers</button>
+                        <button class="btn" onclick="showLayer('infrastructure')">Infrastructure</button>
+                        <button class="btn" onclick="showLayer('political')">Political</button>
+                        <button class="btn" onclick="showLayer('economic')">Economic</button>
+                        <button class="btn" onclick="showLayer('social')">Social</button>
+                        <button class="btn" onclick="showLayer('loops')">Feedback Loops</button>
+                    </div>
+                </div>
+                
+                <div class="action-controls">
+                    <button class="btn-action btn-primary" onclick="animateLoops()">
+                        <span>▶️</span>
+                        <span>Animate Feedback Loops</span>
+                    </button>
+                    <button class="btn-action btn-secondary" onclick="resetView()">
+                        <span>🔄</span>
+                        <span>Reset</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="main">
+            <div id="map-section">
+                <div class="section-header">
+                    <div class="section-title">System Visualization</div>
+                    <div class="section-description">Hover over elements to explore connections. Click for detailed analysis.</div>
+                </div>
+                
+                <div id="map-container">
+                    <svg id="system-svg"></svg>
+                    
+                    <div id="legend-overlay">
+                        <div class="legend-section">
+                            <div class="legend-title">System Layers</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #1E2761;"></div>
+                                <span>Layer 1: Physical Infrastructure</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #990011;"></div>
+                                <span>Layer 2: Political & Institutional</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #F96167;"></div>
+                                <span>Layer 3: Economic Actors</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #2C5F2D;"></div>
+                                <span>Layer 4: Social & Cultural</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #065A82;"></div>
+                                <span>Layer 5: System Outcomes</span>
+                            </div>
+                        </div>
+                        
+                        <div class="legend-section">
+                            <div class="legend-title">Connections</div>
+                            <div class="legend-item">
+                                <div class="legend-line" style="background: #718096;"></div>
+                                <span>Direct causal link</span>
+                            </div>
+                            <div class="legend-item">
+                                <svg width="32" height="4" style="margin-right: 12px;">
+                                    <line x1="0" y1="2" x2="32" y2="2" stroke="#F96167" stroke-width="3" stroke-dasharray="10,5"/>
+                                </svg>
+                                <span>Reinforcing feedback</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-line" style="background: #2C5F2D;"></div>
+                                <span>Structural constraint</span>
+                            </div>
+                        </div>
+                        
+                        <div class="legend-section">
+                            <div class="legend-title">Impact Levels</div>
+                            <div class="legend-item">
+                                <span class="impact-badge impact-critical">Critical</span>
+                                <span style="margin-left: 8px; font-size: 12px;">Primary drivers</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="impact-badge impact-high">High</span>
+                                <span style="margin-left: 8px; font-size: 12px;">Major contributors</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="impact-badge impact-medium">Medium</span>
+                                <span style="margin-left: 8px; font-size: 12px;">Supporting factors</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="layer-badge" id="layer-indicator">Viewing: All Layers</div>
+                    
+                    <div class="zoom-controls">
+                        <button class="zoom-btn" onclick="zoomIn()">+</button>
+                        <button class="zoom-btn" onclick="zoomOut()">−</button>
+                        <button class="zoom-btn" onclick="resetZoom()" style="font-size: 16px;">⊙</button>
+                    </div>
+                </div>
+                
+                <div id="detail-panel" class="detail-panel"></div>
+            </div>
+            
+            <div id="sidebar">
+                <div class="info-card">
+                    <div class="info-card-title">
+                        <div class="info-card-icon">📈</div>
+                        <span>System Metrics</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Registered Vehicles (GBA)</span>
+                        <span class="metric-value">~1.5M</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Vehicle : Population Ratio</span>
+                        <span class="metric-value">1 : 1.3</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Metro/BRT Infrastructure</span>
+                        <span class="metric-value">0 km</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Avg. Commute Time</span>
+                        <span class="metric-value">45-90 min</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Annual Productivity Loss</span>
+                        <span class="metric-value">$2 billion</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Transport % of Household Budget</span>
+                        <span class="metric-value">15-25%</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">PM2.5 Above WHO Guidelines</span>
+                        <span class="metric-value">3-5x</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Annual Traffic Fatalities</span>
+                        <span class="metric-value">~400</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Traffic Police : Vehicles</span>
+                        <span class="metric-value">1 : 3,000</span>
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-card-title">
+                        <div class="info-card-icon">🔄</div>
+                        <span>Active Reinforcing Loops</span>
+                    </div>
+                    
+                    <div class="loop-card">
+                        <div class="loop-name">
+                            <span class="loop-number">1</span>
+                            Induced Demand Cycle
+                        </div>
+                        <div class="loop-flow">
+                            Congestion <span class="flow-arrow">→</span> Road Expansion <span class="flow-arrow">→</span> More Driving <span class="flow-arrow">→</span> Sprawl <span class="flow-arrow">→</span> Congestion Returns
+                        </div>
+                    </div>
+                    
+                    <div class="loop-card">
+                        <div class="loop-name">
+                            <span class="loop-number">2</span>
+                            Political Capture Loop
+                        </div>
+                        <div class="loop-flow">
+                            Parties Protect Unions <span class="flow-arrow">→</span> Block Transit <span class="flow-arrow">→</span> Poor Service <span class="flow-arrow">→</span> More Cars <span class="flow-arrow">→</span> More Congestion
+                        </div>
+                    </div>
+                    
+                    <div class="loop-card">
+                        <div class="loop-name">
+                            <span class="loop-number">3</span>
+                            Economic Lobbying Loop
+                        </div>
+                        <div class="loop-flow">
+                            Car Sales <span class="flow-arrow">→</span> Lobby Power <span class="flow-arrow">→</span> Block Alternatives <span class="flow-arrow">→</span> Car Dependency <span class="flow-arrow">→</span> More Sales
+                        </div>
+                    </div>
+                    
+                    <div class="loop-card">
+                        <div class="loop-name">
+                            <span class="loop-number">4</span>
+                            State Legitimacy Erosion
+                        </div>
+                        <div class="loop-flow">
+                            State Failure <span class="flow-arrow">→</span> Public Distrust <span class="flow-arrow">→</span> Private Solutions <span class="flow-arrow">→</span> Disinvestment <span class="flow-arrow">→</span> Weaker State
+                        </div>
+                    </div>
+                    
+                    <div class="loop-card">
+                        <div class="loop-name">
+                            <span class="loop-number">5</span>
+                            Enforcement Collapse Loop
+                        </div>
+                        <div class="loop-flow">
+                            Weak Enforcement <span class="flow-arrow">→</span> Violations <span class="flow-arrow">→</span> Worse Congestion <span class="flow-arrow">→</span> Distrust <span class="flow-arrow">→</span> Lower Revenue <span class="flow-arrow">→</span> Weaker Enforcement
+                        </div>
+                    </div>
+                    
+                    <div class="loop-card">
+                        <div class="loop-name">
+                            <span class="loop-number">6</span>
+                            Cultural Reinforcement Loop
+                        </div>
+                        <div class="loop-flow">
+                            Car Culture <span class="flow-arrow">→</span> Transit Stigma <span class="flow-arrow">→</span> No Demand <span class="flow-arrow">→</span> No Investment <span class="flow-arrow">→</span> Bad Service <span class="flow-arrow">→</span> Stronger Car Culture
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="info-card">
+                    <div class="info-card-title">
+                        <div class="info-card-icon">💡</div>
+                        <span>Key Insights</span>
+                    </div>
+                    <p style="font-size: 13px; line-height: 1.7; color: #4a5568; margin-bottom: 12px;">
+                        <strong style="color: #1a1f3a;">Congestion is not a technical problem</strong> — it's the predictable output of a system designed to serve elite interests and enable rent extraction.
+                    </p>
+                    <p style="font-size: 13px; line-height: 1.7; color: #4a5568; margin-bottom: 12px;">
+                        The six reinforcing feedback loops create <strong style="color: #F96167;">systemic lock-in</strong>, making incremental reforms ineffective.
+                    </p>
+                    <p style="font-size: 13px; line-height: 1.7; color: #4a5568;">
+                        Breaking the system requires addressing <strong style="color: #1a1f3a;">political capture, not just infrastructure</strong>.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="tooltip" id="tooltip">
+        <div class="tooltip-header"></div>
+        <div class="tooltip-body"></div>
+        <div class="tooltip-footer"></div>
+    </div>
+
+    <script>
+        // Configuration
+        const width = 1200;
+        const height = 1100;
+        const layerHeight = 180;
+        
+        const svg = d3.select('#system-svg')
+            .attr('width', width)
+            .attr('height', height);
+        
+        const g = svg.append('g');
+        
+        // Zoom behavior
+        const zoom = d3.zoom()
+            .scaleExtent([0.4, 2.5])
+            .on('zoom', (event) => {
+                g.attr('transform', event.transform);
+            });
+        
+        svg.call(zoom);
+        
+        // Arrow markers
+        const defs = svg.append('defs');
+        
+        const arrowTypes = [
+            { id: 'arrow-normal', color: '#718096' },
+            { id: 'arrow-reinforcing', color: '#F96167' },
+            { id: 'arrow-structural', color: '#2C5F2D' }
+        ];
+        
+        arrowTypes.forEach(arrow => {
+            defs.append('marker')
+                .attr('id', arrow.id)
+                .attr('viewBox', '0 -5 10 10')
+                .attr('refX', 30)
+                .attr('refY', 0)
+                .attr('markerWidth', 7)
+                .attr('markerHeight', 7)
+                .attr('orient', 'auto')
+                .append('path')
+                .attr('d', 'M0,-5L10,0L0,5')
+                .attr('fill', arrow.color);
+        });
+        
+        // ORGANIZED NODE DATA - Clean 5-layer structure
+        const nodes = [
+            // ========== LAYER 1: PHYSICAL INFRASTRUCTURE (y=120) ==========
+            { id: 'roads', label: 'Limited Road', sublabel: 'Network', layer: 1, x: 150, y: 120, color: '#1E2761',
+              description: 'Road network designed in 1960s-70s. Ring Bridge and coastal highway as sole north-south arteries. No expansion since 1994.',
+              impact: 'Critical', metric: 'No capacity increase 30+ years' },
+            
+            { id: 'transit', label: 'Zero Public', sublabel: 'Transit System', layer: 1, x: 350, y: 120, color: '#1E2761',
+              description: 'ZERO kilometers of metro, BRT, or light rail. No state-run public transport agency exists.',
+              impact: 'Critical', metric: '0 km vs Cairo 77km, Istanbul 245km' },
+            
+            { id: 'signals', label: 'Dysfunctional', sublabel: 'Traffic Mgmt', layer: 1, x: 550, y: 120, color: '#1E2761',
+              description: '40% of traffic signals non-functional. No coordinated timing. No intelligent transport systems.',
+              impact: 'High', metric: '40% signals broken' },
+            
+            { id: 'parking', label: 'No Parking', sublabel: 'Regulation', layer: 1, x: 750, y: 120, color: '#1E2761',
+              description: 'Street parking unregulated and unenforced. Up to 30% of road capacity blocked by parked vehicles.',
+              impact: 'High', metric: '30% capacity lost to parking' },
+            
+            { id: 'sidewalks', label: 'Missing', sublabel: 'Pedestrian Infra', layer: 1, x: 950, y: 120, color: '#1E2761',
+              description: 'Discontinuous sidewalks. Occupied by cars. Inaccessible for wheelchairs/strollers.',
+              impact: 'Medium', metric: '80% sidewalks blocked/missing' },
+            
+            // ========== LAYER 2: POLITICAL/INSTITUTIONAL (y=300) ==========
+            { id: 'fragmentation', label: 'Governance', sublabel: 'Fragmentation', layer: 2, x: 100, y: 300, color: '#990011',
+              description: '24 municipalities + 6 ministries with overlapping mandates. No unified GBA transport authority. Sectarian political logic blocks coordination.',
+              impact: 'Critical', metric: '24 municipalities, 0 coordination' },
+            
+            { id: 'unions', label: 'Protected', sublabel: 'Transport Unions', layer: 2, x: 280, y: 300, color: '#990011',
+              description: 'Bus/van unions politically protected by Amal, Hezbollah, Tayyar. Violently resist formalization. 2017 attacks on ride-hailing drivers.',
+              impact: 'Critical', metric: 'Violent resistance to reform (2017)' },
+            
+            { id: 'enforcement', label: 'Weak Traffic', sublabel: 'Enforcement', layer: 2, x: 460, y: 300, color: '#990011',
+              description: '~500 traffic police for 1.5M vehicles (1:3000 ratio vs 1:500 international standard). Selective/corrupt enforcement.',
+              impact: 'High', metric: '1 officer : 3,000 vehicles' },
+            
+            { id: 'parties', label: 'Political Party', sublabel: 'Capture', layer: 2, x: 640, y: 300, color: '#990011',
+              description: 'Sectarian parties control ministries, municipalities, unions. Use transport for patronage. Elite motorcades create rolling roadblocks.',
+              impact: 'Critical', metric: 'Elite helicopter use to avoid traffic' },
+            
+            { id: 'regulation', label: 'Regulatory', sublabel: 'Vacuum', layer: 2, x: 820, y: 300, color: '#990011',
+              description: 'No emission standards, congestion pricing, land-use/transport integration, or parking fees.',
+              impact: 'High', metric: '15+ year BRT legislation delay' },
+            
+            { id: 'planning', label: 'No Integrated', sublabel: 'Planning', layer: 2, x: 1000, y: 300, color: '#990011',
+              description: 'CDR has road-expansion bias. No multimodal planning. Zoning ignores mobility impacts.',
+              impact: 'High', metric: 'BRT studies 1994, 2008, 2012—all shelved' },
+            
+            // ========== LAYER 3: ECONOMIC ACTORS (y=480) ==========
+            { id: 'car-lobby', label: 'Car Import', sublabel: 'Lobby', layer: 3, x: 200, y: 480, color: '#F96167',
+              description: '~40,000 new cars imported annually (pre-crisis). Organized lobby blocks emission standards, import taxes, congestion charges.',
+              impact: 'High', metric: '40,000 cars/year imported' },
+            
+            { id: 'fuel', label: 'Fuel', sublabel: 'Distributors', layer: 3, x: 400, y: 480, color: '#F96167',
+              description: 'Profit from high vehicle use and idling in traffic. Oppose fuel taxes and efficiency standards. 20-30% fuel wasted in congestion.',
+              impact: 'High', metric: '20-30% fuel wasted in traffic' },
+            
+            { id: 'banks', label: 'Auto Loan', sublabel: 'Financing', layer: 3, x: 600, y: 480, color: '#F96167',
+              description: 'Pre-2019: 15-20% of consumer credit was auto loans. Banks profit from car-dependent system.',
+              impact: 'Medium', metric: '15-20% consumer credit = car loans' },
+            
+            { id: 'developers', label: 'Real Estate', sublabel: 'Developers', layer: 3, x: 800, y: 480, color: '#F96167',
+              description: 'Car-dependent suburban sprawl maximizes land value. Oppose transit-oriented development. Control parking lots.',
+              impact: 'High', metric: 'Sprawl profits: $600M+/year' },
+            
+            { id: 'parking-ops', label: 'Parking', sublabel: 'Operators', layer: 3, x: 1000, y: 480, color: '#F96167',
+              description: 'Informal lots often controlled by political parties. Revenue from congestion-induced scarcity.',
+              impact: 'Medium', metric: 'Party-controlled lot monopolies' },
+            
+            // ========== LAYER 4: SOCIAL/CULTURAL (y=660) ==========
+            { id: 'car-culture', label: 'Car = Status', sublabel: 'Symbol', layer: 4, x: 250, y: 660, color: '#2C5F2D',
+              description: 'Social prestige tied to vehicle brand/size. Public transport perceived as poverty. Car ownership = success and independence.',
+              impact: 'High', metric: '70% view car as necessity not luxury' },
+            
+            { id: 'distrust', label: 'Distrust in', sublabel: 'State Services', layer: 4, x: 500, y: 660, color: '#2C5F2D',
+              description: 'Decades of state failure (electricity, water, waste) produce expectation that public transport will also fail. Self-fulfilling prophecy.',
+              impact: 'Critical', metric: '70%+ no confidence in state (2019)' },
+            
+            { id: 'gender', label: 'Gendered', sublabel: 'Mobility', layer: 4, x: 750, y: 660, color: '#2C5F2D',
+              description: 'Women face harassment on informal transport. Driving = safety and autonomy. But excludes non-drivers and deepens car dependency.',
+              impact: 'Medium', metric: 'Women overrepresented in captive riders' },
+            
+            { id: 'class', label: 'Mobility', sublabel: 'Poverty', layer: 4, x: 950, y: 660, color: '#2C5F2D',
+              description: 'Low-income workers spend 2-3 hours/day commuting. Can\'t afford cars. Informal transit unsafe/unreliable.',
+              impact: 'High', metric: '2-3 hrs/day for low-income commuters' },
+            
+            // ========== CENTER: CONGESTION (y=840) ==========
+            { id: 'congestion', label: 'CHRONIC', sublabel: 'CONGESTION', layer: 'center', x: 600, y: 840, color: '#990011',
+              description: '45-90 minute average commute. $2B annual economic loss (5% GDP). Vehicles = 40% of air pollution. ~400 deaths/year from accidents.',
+              impact: 'Critical', metric: '$2B/year loss, 90min commute', size: 'xlarge' },
+            
+            // ========== LAYER 5: OUTCOMES (y=1020) ==========
+            { id: 'economic-loss', label: 'Economic', sublabel: 'Losses', layer: 5, x: 300, y: 1020, color: '#065A82',
+              description: '$2B/year productivity loss. 15-25% of household expenditure on transport. Business costs from delays and logistics.',
+              impact: 'Critical', metric: '$2B/year = 5% pre-crisis GDP' },
+            
+            { id: 'pollution', label: 'Air Pollution', sublabel: '& Health Crisis', layer: 5, x: 600, y: 1020, color: '#065A82',
+              description: 'PM2.5 exceeds WHO guidelines by 3-5x. Vehicles = 40% of pollution. Respiratory disease, cardiovascular impacts, noise stress.',
+              impact: 'Critical', metric: 'PM2.5: 3-5x WHO limit' },
+            
+            { id: 'inequality', label: 'Mobility', sublabel: 'Inequality', layer: 5, x: 900, y: 1020, color: '#065A82',
+              description: 'Women, elderly, disabled excluded. Geographic inequality: southern suburbs, Bekaa, North disconnected from jobs.',
+              impact: 'High', metric: '80%+ lack viable transport options' }
+        ];
+        
+        // COMPREHENSIVE LINK DATA
+        const links = [
+            // Layer 1 → Congestion
+            { source: 'roads', target: 'congestion', type: 'causal', weight: 4, label: 'capacity limit' },
+            { source: 'transit', target: 'congestion', type: 'causal', weight: 5, label: 'no alternatives' },
+            { source: 'signals', target: 'congestion', type: 'causal', weight: 3, label: 'poor flow' },
+            { source: 'parking', target: 'congestion', type: 'causal', weight: 3, label: 'blocks 30% capacity' },
+            { source: 'sidewalks', target: 'car-culture', type: 'causal', weight: 2, label: 'forces car use' },
+            
+            // Layer 2 Political → Infrastructure
+            { source: 'fragmentation', target: 'transit', type: 'structural', weight: 5, label: 'blocks planning' },
+            { source: 'fragmentation', target: 'signals', type: 'causal', weight: 3, label: 'no coordination' },
+            { source: 'fragmentation', target: 'planning', type: 'structural', weight: 4, label: 'prevents integration' },
+            { source: 'unions', target: 'transit', type: 'structural', weight: 5, label: 'blocks formalization' },
+            { source: 'enforcement', target: 'parking', type: 'causal', weight: 4, label: 'enables violations' },
+            { source: 'enforcement', target: 'congestion', type: 'causal', weight: 3, label: 'no rule of law' },
+            { source: 'parties', target: 'unions', type: 'structural', weight: 5, label: 'protects for votes' },
+            { source: 'parties', target: 'fragmentation', type: 'structural', weight: 4, label: 'maintains via sectarianism' },
+            { source: 'parties', target: 'enforcement', type: 'causal', weight: 3, label: 'undermines' },
+            { source: 'regulation', target: 'transit', type: 'causal', weight: 4, label: 'no legal framework' },
+            { source: 'regulation', target: 'parking', type: 'causal', weight: 3, label: 'no pricing/fees' },
+            { source: 'planning', target: 'roads', type: 'causal', weight: 4, label: 'road expansion bias' },
+            { source: 'planning', target: 'transit', type: 'causal', weight: 4, label: 'neglects alternatives' },
+            
+            // Layer 3 Economic → Political
+            { source: 'car-lobby', target: 'parties', type: 'causal', weight: 5, label: 'lobbying $$$' },
+            { source: 'car-lobby', target: 'regulation', type: 'causal', weight: 4, label: 'blocks reforms' },
+            { source: 'fuel', target: 'parties', type: 'causal', weight: 4, label: 'lobbying $$$' },
+            { source: 'fuel', target: 'regulation', type: 'causal', weight: 3, label: 'opposes taxes' },
+            { source: 'banks', target: 'car-lobby', type: 'causal', weight: 3, label: 'finances purchases' },
+            { source: 'developers', target: 'roads', type: 'causal', weight: 4, label: 'demands expansion' },
+            { source: 'developers', target: 'planning', type: 'causal', weight: 4, label: 'influences zoning' },
+            { source: 'developers', target: 'transit', type: 'causal', weight: 3, label: 'opposes TOD' },
+            { source: 'parking-ops', target: 'parking', type: 'causal', weight: 3, label: 'profits from chaos' },
+            
+            // Layer 4 Social → Infrastructure & Congestion
+            { source: 'car-culture', target: 'congestion', type: 'causal', weight: 4, label: 'drives demand' },
+            { source: 'car-culture', target: 'transit', type: 'causal', weight: 3, label: 'stigmatizes' },
+            { source: 'distrust', target: 'transit', type: 'structural', weight: 5, label: 'opposes public investment' },
+            { source: 'distrust', target: 'car-culture', type: 'causal', weight: 4, label: 'reinforces private solutions' },
+            { source: 'gender', target: 'car-culture', type: 'causal', weight: 3, label: 'safety concerns' },
+            { source: 'gender', target: 'transit', type: 'causal', weight: 3, label: 'harassment makes unsafe' },
+            { source: 'class', target: 'inequality', type: 'causal', weight: 4, label: 'produces' },
+            { source: 'class', target: 'economic-loss', type: 'causal', weight: 3, label: 'lost productivity' },
+            
+            // Congestion → Outcomes
+            { source: 'congestion', target: 'economic-loss', type: 'causal', weight: 5, label: 'time waste' },
+            { source: 'congestion', target: 'pollution', type: 'causal', weight: 5, label: 'idling emissions' },
+            { source: 'congestion', target: 'inequality', type: 'causal', weight: 4, label: 'unequal burden' },
+            
+            // ========== REINFORCING FEEDBACK LOOPS ==========
+            // Loop 1: Induced Demand
+            { source: 'congestion', target: 'roads', type: 'reinforcing', weight: 5, label: 'demands expansion', loop: 1 },
+            { source: 'roads', target: 'car-culture', type: 'reinforcing', weight: 4, label: 'enables more driving', loop: 1 },
+            { source: 'car-culture', target: 'developers', type: 'reinforcing', weight: 3, label: 'sprawl demand', loop: 1 },
+            { source: 'developers', target: 'congestion', type: 'reinforcing', weight: 4, label: 'more travel distance', loop: 1 },
+            
+            // Loop 2: Political Capture
+            { source: 'parties', target: 'unions', type: 'reinforcing', weight: 5, label: 'protects', loop: 2 },
+            { source: 'unions', target: 'transit', type: 'reinforcing', weight: 5, label: 'blocks', loop: 2 },
+            { source: 'transit', target: 'congestion', type: 'reinforcing', weight: 5, label: 'forces cars', loop: 2 },
+            { source: 'congestion', target: 'parties', type: 'reinforcing', weight: 4, label: 'voters demand action', loop: 2 },
+            
+            // Loop 3: Economic Lobbying
+            { source: 'congestion', target: 'car-lobby', type: 'reinforcing', weight: 5, label: 'increases sales', loop: 3 },
+            { source: 'car-lobby', target: 'regulation', type: 'reinforcing', weight: 4, label: 'blocks alternatives', loop: 3 },
+            { source: 'regulation', target: 'transit', type: 'reinforcing', weight: 4, label: 'no framework', loop: 3 },
+            
+            // Loop 4: State Legitimacy
+            { source: 'congestion', target: 'distrust', type: 'reinforcing', weight: 5, label: 'confirms state failure', loop: 4 },
+            { source: 'economic-loss', target: 'distrust', type: 'reinforcing', weight: 4, label: 'erodes legitimacy', loop: 4 },
+            { source: 'pollution', target: 'distrust', type: 'reinforcing', weight: 3, label: 'visible failure', loop: 4 },
+            { source: 'distrust', target: 'enforcement', type: 'reinforcing', weight: 4, label: 'low tax revenue', loop: 4 },
+            
+            // Loop 5: Enforcement Collapse
+            { source: 'enforcement', target: 'parking', type: 'reinforcing', weight: 4, label: 'no regulation', loop: 5 },
+            { source: 'parking', target: 'congestion', type: 'reinforcing', weight: 3, label: 'blocks lanes', loop: 5 },
+            
+            // Loop 6: Cultural Reinforcement
+            { source: 'car-culture', target: 'transit', type: 'reinforcing', weight: 3, label: 'no demand', loop: 6 },
+            { source: 'transit', target: 'car-culture', type: 'reinforcing', weight: 4, label: 'poor service reinforces', loop: 6 }
+        ];
+        
+        let currentLayer = 'all';
+        let selectedNode = null;
+        
+        // Draw system
+        function drawSystem() {
+            // Clear existing
+            g.selectAll('*').remove();
+            
+            // Create groups for each layer
+            const layers = g.append('g').attr('class', 'layers');
+            const linkGroup = layers.append('g').attr('class', 'links');
+            const nodeGroup = layers.append('g').attr('class', 'nodes');
+            
+            // Draw links
+            const linkElements = linkGroup.selectAll('.link')
+                .data(links)
+                .enter()
+                .append('line')
+                .attr('class', d => {
+                    let classes = 'link';
+                    if (d.type === 'reinforcing') classes += ' feedback-loop';
+                    return classes;
+                })
+                .attr('x1', d => nodes.find(n => n.id === d.source).x)
+                .attr('y1', d => nodes.find(n => n.id === d.source).y)
+                .attr('x2', d => nodes.find(n => n.id === d.target).x)
+                .attr('y2', d => nodes.find(n => n.id === d.target).y)
+                .attr('stroke', d => {
+                    if (d.type === 'reinforcing') return '#F96167';
+                    if (d.type === 'structural') return '#2C5F2D';
+                    return '#718096';
+                })
+                .attr('stroke-width', d => Math.min((d.weight || 2) * 0.8, 5))
+                .attr('opacity', d => d.type === 'reinforcing' ? 0.8 : 0.4)
+                .attr('marker-end', d => {
+                    if (d.type === 'reinforcing') return 'url(#arrow-reinforcing)';
+                    if (d.type === 'structural') return 'url(#arrow-structural)';
+                    return 'url(#arrow-normal)';
+                })
+                .attr('data-source', d => d.source)
+                .attr('data-target', d => d.target);
+            
+            // Draw link labels
+            const linkLabels = linkGroup.selectAll('.link-label')
+                .data(links.filter(d => d.label))
+                .enter()
+                .append('text')
+                .attr('class', 'link-label')
+                .attr('x', d => {
+                    const source = nodes.find(n => n.id === d.source);
+                    const target = nodes.find(n => n.id === d.target);
+                    return (source.x + target.x) / 2;
+                })
+                .attr('y', d => {
+                    const source = nodes.find(n => n.id === d.source);
+                    const target = nodes.find(n => n.id === d.target);
+                    return (source.y + target.y) / 2 - 10;
+                })
+                .text(d => d.label);
+            
+            // Draw nodes
+            const nodeGroups = nodeGroup.selectAll('.node')
+                .data(nodes)
+                .enter()
+                .append('g')
+                .attr('class', 'node')
+                .attr('data-layer', d => d.layer)
+                .attr('transform', d => `translate(${d.x},${d.y})`)
+                .on('mouseover', handleNodeHover)
+                .on('mouseout', handleNodeOut)
+                .on('click', handleNodeClick);
+            
+            // Node rectangles
+            nodeGroups.append('rect')
+                .attr('class', 'node-rect')
+                .attr('x', d => d.size === 'xlarge' ? -90 : -65)
+                .attr('y', d => d.size === 'xlarge' ? -38 : -30)
+                .attr('width', d => d.size === 'xlarge' ? 180 : 130)
+                .attr('height', d => d.size === 'xlarge' ? 76 : 60)
+                .attr('rx', 12)
+                .attr('fill', d => d.color)
+                .attr('stroke', '#fff')
+                .attr('stroke-width', 2)
+                .style('filter', 'drop-shadow(0 4px 10px rgba(0,0,0,0.15))');
+            
+            // Impact badges
+            nodeGroups.filter(d => d.impact === 'Critical')
+                .append('circle')
+                .attr('cx', 60)
+                .attr('cy', -22)
+                .attr('r', 8)
+                .attr('fill', '#FFD700')
+                .attr('stroke', '#fff')
+                .attr('stroke-width', 2);
+            
+            nodeGroups.filter(d => d.impact === 'Critical')
+                .append('text')
+                .attr('class', 'node-badge')
+                .attr('x', 60)
+                .attr('y', -22)
+                .attr('text-anchor', 'middle')
+                .attr('dominant-baseline', 'middle')
+                .attr('fill', '#1a1f3a')
+                .text('!');
+            
+            // Node labels
+            nodeGroups.append('text')
+                .attr('class', 'node-label')
+                .attr('dy', d => d.size === 'xlarge' ? -10 : -6)
+                .text(d => d.label)
+                .style('font-size', d => d.size === 'xlarge' ? '14px' : '11px');
+            
+            nodeGroups.append('text')
+                .attr('class', 'node-label node-sublabel')
+                .attr('dy', d => d.size === 'xlarge' ? 8 : 10)
+                .text(d => d.sublabel)
+                .style('font-size', d => d.size === 'xlarge' ? '12px' : '9px');
+            
+            // Store references
+            window.linkElements = linkElements;
+            window.linkLabels = linkLabels;
+            window.nodeGroups = nodeGroups;
+        }
+        
+        function handleNodeHover(event, d) {
+            // Highlight node
+            d3.select(this).select('.node-rect')
+                .attr('stroke', '#FFD700')
+                .attr('stroke-width', 4)
+                .style('filter', 'drop-shadow(0 8px 20px rgba(255,215,0,0.4))');
+            
+            // Highlight connected links
+            window.linkElements
+                .attr('opacity', link => {
+                    if (link.source === d.id || link.target === d.id) return 1;
+                    return 0.08;
+                })
+                .attr('stroke-width', link => {
+                    if (link.source === d.id || link.target === d.id) {
+                        return Math.min((link.weight || 2) * 1.2, 6);
+                    }
+                    return Math.min((link.weight || 2) * 0.8, 5);
+                });
+            
+            // Show link labels
+            window.linkLabels
+                .classed('visible', link => link.source === d.id || link.target === d.id);
+            
+            // Show tooltip
+            const tooltip = document.getElementById('tooltip');
+            const impactClass = d.impact === 'Critical' ? 'impact-critical' : 
+                               d.impact === 'High' ? 'impact-high' : 'impact-medium';
+            
+            tooltip.querySelector('.tooltip-header').textContent = d.label + ' ' + d.sublabel;
+            tooltip.querySelector('.tooltip-body').innerHTML = d.description;
+            tooltip.querySelector('.tooltip-footer').innerHTML = `
+                <div style="margin-bottom: 6px;"><span class="impact-badge ${impactClass}">${d.impact} Impact</span></div>
+                <div style="color: #CADCFC;">📊 ${d.metric}</div>
+            `;
+            
+            tooltip.style.left = event.pageX + 20 + 'px';
+            tooltip.style.top = event.pageY + 20 + 'px';
+            tooltip.classList.add('show');
+        }
+        
+        function handleNodeOut(event, d) {
+            if (selectedNode !== d.id) {
+                d3.select(this).select('.node-rect')
+                    .attr('stroke', '#fff')
+                    .attr('stroke-width', 2)
+                    .style('filter', 'drop-shadow(0 4px 10px rgba(0,0,0,0.15))');
+            }
+            
+            window.linkElements
+                .attr('opacity', link => link.type === 'reinforcing' ? 0.8 : 0.4)
+                .attr('stroke-width', link => Math.min((link.weight || 2) * 0.8, 5));
+            
+            window.linkLabels.classed('visible', false);
+            
+            document.getElementById('tooltip').classList.remove('show');
+        }
+        
+        function handleNodeClick(event, d) {
+            event.stopPropagation();
+            selectedNode = d.id;
+            
+            // Highlight selected node
+            window.nodeGroups.select('.node-rect')
+                .attr('stroke', n => n.id === d.id ? '#FFD700' : '#fff')
+                .attr('stroke-width', n => n.id === d.id ? 4 : 2);
+            
+            // Show detail panel
+            const panel = document.getElementById('detail-panel');
+            const impactClass = d.impact === 'Critical' ? 'impact-critical' : 
+                               d.impact === 'High' ? 'impact-high' : 'impact-medium';
+            
+            const outgoing = links.filter(l => l.source === d.id);
+            const incoming = links.filter(l => l.target === d.id);
+            
+            let html = `
+                <div class="detail-header">
+                    <div>
+                        <div class="detail-title">${d.label} ${d.sublabel}</div>
+                        <span class="impact-badge ${impactClass}">${d.impact} Impact</span>
+                    </div>
+                    <button class="close-btn" onclick="closeDetail()">×</button>
+                </div>
+                
+                <p style="margin: 16px 0; line-height: 1.7; color: #4a5568;">${d.description}</p>
+                
+                <div style="background: #f5f7fa; padding: 16px; border-radius: 10px; margin: 16px 0;">
+                    <div style="font-weight: 700; color: #1a1f3a; margin-bottom: 6px;">Key Metric</div>
+                    <div style="color: #F96167; font-size: 15px; font-weight: 600;">📊 ${d.metric}</div>
+                </div>
+            `;
+            
+            if (outgoing.length > 0) {
+                html += `
+                    <div class="connection-list">
+                        <div style="font-weight: 700; color: #1a1f3a; margin-bottom: 12px;">
+                            Influences (${outgoing.length})
+                        </div>
+                `;
+                outgoing.forEach(l => {
+                    const target = nodes.find(n => n.id === l.target);
+                    html += `
+                        <div class="connection-item">
+                            <div style="width: 12px; height: 12px; background: ${target.color}; border-radius: 3px;"></div>
+                            <span class="connection-arrow">→</span>
+                            <span style="flex: 1;">${target.label} ${target.sublabel}</span>
+                            ${l.label ? `<span style="color: #718096; font-size: 11px;">(${l.label})</span>` : ''}
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+            
+            if (incoming.length > 0) {
+                html += `
+                    <div class="connection-list">
+                        <div style="font-weight: 700; color: #1a1f3a; margin-bottom: 12px;">
+                            Influenced by (${incoming.length})
+                        </div>
+                `;
+                incoming.forEach(l => {
+                    const source = nodes.find(n => n.id === l.source);
+                    html += `
+                        <div class="connection-item">
+                            <div style="width: 12px; height: 12px; background: ${source.color}; border-radius: 3px;"></div>
+                            <span class="connection-arrow">→</span>
+                            <span style="flex: 1;">${source.label} ${source.sublabel}</span>
+                            ${l.label ? `<span style="color: #718096; font-size: 11px;">(${l.label})</span>` : ''}
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+            
+            panel.innerHTML = html;
+            panel.classList.add('active');
+        }
+        
+        function closeDetail() {
+            selectedNode = null;
+            document.getElementById('detail-panel').classList.remove('active');
+            window.nodeGroups.select('.node-rect')
+                .attr('stroke', '#fff')
+                .attr('stroke-width', 2);
+        }
+        
+        // Click outside to close
+        svg.on('click', closeDetail);
+        
+        // Layer filtering
+        function showLayer(layer) {
+            currentLayer = layer;
+            
+            // Update button states
+            document.querySelectorAll('.btn-group .btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Update indicator
+            const indicator = document.getElementById('layer-indicator');
+            const layerNames = {
+                'all': 'All Layers',
+                'infrastructure': 'Layer 1: Infrastructure',
+                'political': 'Layer 2: Political',
+                'economic': 'Layer 3: Economic',
+                'social': 'Layer 4: Social',
+                'loops': 'Feedback Loops Only'
+            };
+            indicator.textContent = 'Viewing: ' + layerNames[layer];
+            
+            if (layer === 'all') {
+                window.nodeGroups.style('opacity', 1);
+                window.linkElements.attr('opacity', l => l.type === 'reinforcing' ? 0.8 : 0.4);
+            } else if (layer === 'loops') {
+                const loopNodes = new Set();
+                links.filter(l => l.type === 'reinforcing').forEach(l => {
+                    loopNodes.add(l.source);
+                    loopNodes.add(l.target);
+                });
+                
+                window.nodeGroups.style('opacity', d => loopNodes.has(d.id) ? 1 : 0.15);
+                window.linkElements.attr('opacity', l => l.type === 'reinforcing' ? 1 : 0.05);
+            } else {
+                const layerMap = {
+                    'infrastructure': 1,
+                    'political': 2,
+                    'economic': 3,
+                    'social': 4
+                };
+                const targetLayer = layerMap[layer];
+                
+                window.nodeGroups.style('opacity', d => 
+                    d.layer === targetLayer || d.id === 'congestion' ? 1 : 0.15
+                );
+                
+                window.linkElements.attr('opacity', l => {
+                    const source = nodes.find(n => n.id === l.source);
+                    const target = nodes.find(n => n.id === l.target);
+                    return (source.layer === targetLayer || target.id === 'congestion' ||
+                            target.layer === targetLayer || source.id === 'congestion') ? 0.7 : 0.05;
+                });
+            }
+        }
+        
+        function animateLoops() {
+            const loops = links.filter(l => l.type === 'reinforcing');
+            
+            loops.forEach((loop, i) => {
+                setTimeout(() => {
+                    // Flash link
+                    window.linkElements
+                        .filter(l => l === loop)
+                        .transition()
+                        .duration(600)
+                        .attr('stroke', '#FFD700')
+                        .attr('stroke-width', 8)
+                        .transition()
+                        .duration(600)
+                        .attr('stroke', '#F96167')
+                        .attr('stroke-width', Math.min((loop.weight || 2) * 0.8, 5));
+                    
+                    // Flash nodes
+                    [loop.source, loop.target].forEach(nodeId => {
+                        window.nodeGroups
+                            .filter(n => n.id === nodeId)
+                            .select('.node-rect')
+                            .transition()
+                            .duration(600)
+                            .attr('stroke', '#FFD700')
+                            .attr('stroke-width', 5)
+                            .style('filter', 'drop-shadow(0 8px 30px rgba(255,215,0,0.6))')
+                            .transition()
+                            .duration(600)
+                            .attr('stroke', '#fff')
+                            .attr('stroke-width', 2)
+                            .style('filter', 'drop-shadow(0 4px 10px rgba(0,0,0,0.15))');
+                    });
+                }, i * 1200);
+            });
+        }
+        
+        function resetView() {
+            showLayer('all');
+            closeDetail();
+            resetZoom();
+        }
+        
+        function zoomIn() {
+            svg.transition().call(zoom.scaleBy, 1.3);
+        }
+        
+        function zoomOut() {
+            svg.transition().call(zoom.scaleBy, 0.7);
+        }
+        
+        function resetZoom() {
+            svg.transition().call(zoom.transform, d3.zoomIdentity);
+        }
+        
+        // Initialize
+        drawSystem();
+        
+        // Add layer annotations
+        const layerLabels = [
+            { y: 120, label: 'LAYER 1: PHYSICAL INFRASTRUCTURE' },
+            { y: 300, label: 'LAYER 2: POLITICAL & INSTITUTIONAL' },
+            { y: 480, label: 'LAYER 3: ECONOMIC ACTORS' },
+            { y: 660, label: 'LAYER 4: SOCIAL & CULTURAL' },
+            { y: 1020, label: 'LAYER 5: SYSTEM OUTCOMES' }
+        ];
+        
+        g.selectAll('.layer-label')
+            .data(layerLabels)
+            .enter()
+            .append('text')
+            .attr('class', 'layer-label')
+            .attr('x', 40)
+            .attr('y', d => d.y)
+            .attr('font-size', '11px')
+            .attr('font-weight', '700')
+            .attr('fill', '#718096')
+            .attr('opacity', 0.6)
+            .text(d => d.label);
+    </script>
+</body>
+</html>
